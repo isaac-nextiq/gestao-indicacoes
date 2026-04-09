@@ -63,7 +63,13 @@ function doGet(e) {
 // ═══════════════════════════════════════════════════════════
 function doPost(e) {
   try {
-    const body = JSON.parse(e.postData.contents);
+    // Suporta tanto JSON puro quanto URLSearchParams com campo "payload"
+    let body;
+    if (e.postData.type === "application/x-www-form-urlencoded") {
+      body = JSON.parse(e.parameter.payload || "{}");
+    } else {
+      body = JSON.parse(e.postData.contents);
+    }
     if (API_TOKEN && body.token !== API_TOKEN) {
       return jsonResponse({ error: "Unauthorized" });
     }
