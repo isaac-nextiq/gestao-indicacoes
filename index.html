@@ -54,7 +54,7 @@ const {
   Area
 } = Recharts;
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbyjZWb-jeyFhc2pjyy8bHh9wC5E8nvmgDmIiRgfLnkCaHqNIYoomRyIN82V2noz3K8Vyg/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbxWb5RupL8AKf9K6X4SYI5U1lvFQaNUIfEEPiajgWUuG1elqgr3Nsge6L3wC8WNrMfWAA/exec",
   API_TOKEN: "",
   POLL_INTERVAL: 300000,
   DEMO_MODE: false
@@ -129,6 +129,7 @@ function generateDemoData() {
     const cD = hC ? new Date(eD.getTime() + Math.random() * 10 * 864e5) : null;
     return {
       _rowIndex: i,
+      colaborador_indicacao: ["João", "Maria", "Carlos", "Ana", "Pedro"][i % 5],
       paciente_fechou: n,
       telefone_paciente: "(27) 9" + Math.floor(1e3 + Math.random() * 9e3) + "-" + Math.floor(1e3 + Math.random() * 9e3),
       valor_contrato: Math.round((3e3 + Math.random() * 27e3) / 100) * 100,
@@ -174,29 +175,15 @@ function buildUrl() {
   if (CONFIG.API_TOKEN) u += (u.includes("?") ? "&" : "?") + "token=" + CONFIG.API_TOKEN;
   return u;
 }
-// GET via JSONP para evitar bloqueio de CORS do Google Apps Script
 function apiFetchJsonp() {
   return new Promise((resolve, reject) => {
     const cbName = "__gasCallback_" + Date.now();
     const url = buildUrl() + (buildUrl().includes("?") ? "&" : "?") + "callback=" + cbName;
     const script = document.createElement("script");
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error("Timeout ao carregar dados da planilha"));
-    }, 15000);
-    function cleanup() {
-      clearTimeout(timeout);
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-    window[cbName] = function(data) {
-      cleanup();
-      resolve(data);
-    };
-    script.onerror = function() {
-      cleanup();
-      reject(new Error("Falha ao conectar com a planilha"));
-    };
+    const timeout = setTimeout(() => { cleanup(); reject(new Error("Timeout ao carregar dados da planilha")); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); }
+    window[cbName] = function(data) { cleanup(); resolve(data); };
+    script.onerror = function() { cleanup(); reject(new Error("Falha ao conectar com a planilha")); };
     script.src = url;
     document.head.appendChild(script);
   });
@@ -214,7 +201,6 @@ async function apiPost(body) {
     return { success: true };
   }
   if (CONFIG.API_TOKEN) body.token = CONFIG.API_TOKEN;
-  // POST com no-cors (Google Apps Script aceita, mas não retorna body legível)
   await fetch(CONFIG.API_URL, {
     method: "POST",
     mode: "no-cors",
@@ -275,6 +261,7 @@ function Toast({
   }, message));
 }
 const EMPTY = {
+  colaborador_indicacao: "",
   paciente_fechou: "",
   telefone_paciente: "",
   valor_contrato: "",
@@ -305,7 +292,7 @@ function FormModal({
     ...f,
     [k]: v
   }));
-  const canSave = form.paciente_fechou.trim() && form.valor_contrato && form.data_fechamento && form.paciente_indicador.trim();
+  const canSave = form.colaborador_indicacao.trim() && form.paciente_fechou.trim() && form.valor_contrato && form.data_fechamento && form.paciente_indicador.trim();
   const fs = {
     width: "100%",
     background: T.surfaceAlt,
@@ -389,6 +376,27 @@ function FormModal({
       flex: 1
     }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: T.purple,
+      marginBottom: 12,
+      textTransform: "uppercase",
+      letterSpacing: ".08em"
+    }
+  }, "\uD83D\uDC64 Colaborador que coletou a indica\xE7\xE3o"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: ls
+  }, "Nome do Colaborador *"), /*#__PURE__*/React.createElement("input", {
+    style: fs,
+    value: form.colaborador_indicacao,
+    onChange: e => set("colaborador_indicacao", e.target.value),
+    placeholder: "Nome de quem coletou a indica\xE7\xE3o",
+    autoFocus: true
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
