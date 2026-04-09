@@ -24,16 +24,17 @@ const API_TOKEN = ""; // Opcional: defina um token para proteger a API
 
 // Ordem das colunas na planilha (A=0, B=1, ...)
 const COLUMNS = {
-  paciente_fechou: 0,
-  telefone_paciente: 1,
-  valor_contrato: 2,
-  data_fechamento: 3,
-  paciente_indicador: 4,
-  telefone_indicador: 5,
-  endereco: 6,
-  data_ligacao_confirmacao: 7,
-  data_envio_presente: 8,
-  data_confirmacao_recebimento: 9,
+  colaborador_indicacao: 0,
+  paciente_fechou: 1,
+  telefone_paciente: 2,
+  valor_contrato: 3,
+  data_fechamento: 4,
+  paciente_indicador: 5,
+  telefone_indicador: 6,
+  endereco: 7,
+  data_ligacao_confirmacao: 8,
+  data_envio_presente: 9,
+  data_confirmacao_recebimento: 10,
 };
 
 const COL_KEYS = Object.keys(COLUMNS);
