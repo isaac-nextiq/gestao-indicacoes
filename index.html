@@ -121,12 +121,16 @@
       return url;
     }
 
+    // CORS workaround para Google Apps Script:
+    // O GAS faz redirect 302 cross-origin. Solucao: redirect:"follow" + URLSearchParams no POST.
     async function apiFetch() {
       if (CONFIG.DEMO_MODE || !CONFIG.API_URL) {
         await new Promise(r=>setTimeout(r,400));
-        return null; // signals demo
+        return null;
       }
-      const res = await fetch(buildUrl());
+      let url = CONFIG.API_URL;
+      if (CONFIG.API_TOKEN) url += "?token=" + CONFIG.API_TOKEN;
+      const res = await fetch(url, { redirect: "follow" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     }
@@ -134,10 +138,13 @@
     async function apiPost(body) {
       if (CONFIG.DEMO_MODE) { await new Promise(r=>setTimeout(r,300)); return {success:true}; }
       if (CONFIG.API_TOKEN) body.token = CONFIG.API_TOKEN;
+      // URLSearchParams evita preflight CORS (sem Content-Type: application/json)
+      const params = new URLSearchParams();
+      params.set("payload", JSON.stringify(body));
       const res = await fetch(CONFIG.API_URL, {
-        method:"POST",
-        headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body: JSON.stringify(body),
+        method: "POST",
+        body: params,
+        redirect: "follow",
       });
       return res.json();
     }
