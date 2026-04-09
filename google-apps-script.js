@@ -42,8 +42,9 @@ const COL_KEYS = Object.keys(COLUMNS);
 // GET — Leitura de dados
 // ═══════════════════════════════════════════════════════════
 function doGet(e) {
+  const callback = e.parameter.callback; // suporte a JSONP
   if (API_TOKEN && e.parameter.token !== API_TOKEN) {
-    return jsonResponse({ error: "Unauthorized" });
+    return jsonResponse({ error: "Unauthorized" }, callback);
   }
   try {
     const data = getSheetData();
@@ -52,9 +53,9 @@ function doGet(e) {
       data: data,
       count: data.length,
       timestamp: new Date().toISOString(),
-    });
+    }, callback);
   } catch (err) {
-    return jsonResponse({ success: false, error: err.message });
+    return jsonResponse({ success: false, error: err.message }, callback);
   }
 }
 
@@ -252,7 +253,13 @@ function getSheetData() {
     .filter(Boolean);
 }
 
-function jsonResponse(data) {
+function jsonResponse(data, callback) {
+  if (callback) {
+    // JSONP: envolve a resposta com o nome da função callback
+    const output = callback + "(" + JSON.stringify(data) + ");";
+    return ContentService.createTextOutput(output)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
