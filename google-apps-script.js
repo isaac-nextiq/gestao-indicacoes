@@ -20,6 +20,7 @@
 // ═══════════════════════════════════════════════════════════
 
 const SHEET_NAME = "Indicações";
+const RANKING_SHEET_NAME = "Ranking";
 const API_TOKEN = ""; // Opcional: defina um token para proteger a API
 
 // Ordem das colunas na planilha (A=0, B=1, ...)
@@ -300,4 +301,88 @@ function testAPI() {
   const data = getSheetData();
   Logger.log("Total: " + data.length);
   if (data.length > 0) Logger.log(JSON.stringify(data[0], null, 2));
+}
+
+// ═══════════════════════════════════════════════════════════
+// MENU CUSTOMIZADO + ABA RANKING
+// ═══════════════════════════════════════════════════════════
+//
+// onOpen() é executado automaticamente quando alguém abre a planilha.
+// Ele adiciona o menu "🎁 Reconhecimento" na barra do Sheets para
+// que a Juliana possa atualizar a aba Ranking com 1 clique.
+// ═══════════════════════════════════════════════════════════
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("🎁 Reconhecimento")
+    .addItem("Criar / atualizar aba Ranking", "setupRankingSheet")
+    .addSeparator()
+    .addItem("Configurar aba Indicações (1ª vez)", "setupSheet")
+    .addToUi();
+}
+
+// ─── CRIA OU ATUALIZA A ABA "Ranking" ─────────────────────
+// Gera cabeçalho + 3 fórmulas que se atualizam sozinhas:
+//   A: Indicador (lista única ordenada A→Z)
+//   B: Qtd Indicações (COUNTIF)
+//   C: Faturamento (SUMIF — formatado como R$)
+// Pode ser rodada quantas vezes quiser; sobrescreve a aba.
+function setupRankingSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(RANKING_SHEET_NAME);
+
+  if (sheet) {
+    sheet.clear();
+    sheet.clearFormats();
+  } else {
+    sheet = ss.insertSheet(RANKING_SHEET_NAME);
+  }
+
+  // Detecta separador correto: pt-BR usa ";", en-US usa ","
+  const locale = (ss.getSpreadsheetLocale() || "").toLowerCase();
+  const sep = locale.indexOf("en") === 0 ? "," : ";";
+
+  // Aspas simples no nome da aba para suportar acento ("Indicações")
+  const src = "'" + SHEET_NAME.replace(/'/g, "''") + "'";
+
+  // Cabeçalhos
+  sheet.getRange(1, 1, 1, 3)
+    .setValues([["Indicador", "Qtd Indicações", "Faturamento"]]);
+
+  // Fórmulas
+  sheet.getRange("A2").setFormula(
+    '=SORT(UNIQUE(FILTER(' + src + '!G2:G' + sep + ' ' + src + '!G2:G<>""))' + sep + ' 1' + sep + ' TRUE)'
+  );
+  sheet.getRange("B2").setFormula(
+    '=ARRAYFORMULA(IF(A2:A=""' + sep + ' ""' + sep + ' COUNTIF(' + src + '!G:G' + sep + ' A2:A)))'
+  );
+  sheet.getRange("C2").setFormula(
+    '=ARRAYFORMULA(IF(A2:A=""' + sep + ' ""' + sep + ' SUMIF(' + src + '!G:G' + sep + ' A2:A' + sep + ' ' + src + '!D:D)))'
+  );
+
+  // Estilo do cabeçalho
+  sheet.getRange(1, 1, 1, 3)
+    .setFontWeight("bold")
+    .setBackground("#4285F4")
+    .setFontColor("#FFFFFF")
+    .setHorizontalAlignment("center");
+
+  // Coluna C como moeda
+  sheet.getRange("C2:C").setNumberFormat('"R$" #,##0.00');
+
+  // Larguras + congelar topo
+  sheet.setColumnWidth(1, 320);
+  sheet.setColumnWidth(2, 150);
+  sheet.setColumnWidth(3, 160);
+  sheet.setFrozenRows(1);
+  sheet.setActiveSelection(sheet.getRange("A1"));
+
+  // Feedback (só funciona se chamado pela UI; ignora se rodado pelo editor)
+  try {
+    SpreadsheetApp.getUi().alert(
+      'Aba "Ranking" pronta! Os números se atualizam automaticamente quando você adicionar linhas em "Indicações".'
+    );
+  } catch (e) {
+    Logger.log('Aba "Ranking" criada/atualizada com sucesso.');
+  }
 }

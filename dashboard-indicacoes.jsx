@@ -392,6 +392,68 @@ function DetailModal({ row, onClose, onAction, actionLoading }) {
   );
 }
 
+// ─── INDICADOR CARD ────────────────────────────────────────
+function IndicadorCard({ rank, nome, count, total, ok, pacientes, onPickIndicador }) {
+  const [expanded, setExpanded] = useState(false);
+  const list = pacientes || [];
+  const completion = count ? Math.round((ok || 0) / count * 100) : 0;
+  const isTop3 = rank <= 3;
+  const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
+  const wrap = { overflowWrap: "anywhere", wordBreak: "break-word" };
+  return (
+    <div style={{
+      background: isTop3 ? `linear-gradient(135deg, ${T.surface}, ${T.accentGlow})` : T.surface,
+      border: `1px solid ${isTop3 ? T.accent + "55" : T.border}`,
+      borderRadius: 14, padding: 16,
+      display: "flex", flexDirection: "column", gap: 12,
+      minWidth: 0, overflow: "hidden",
+    }}>
+      <div style={{display: "flex", alignItems: "flex-start", gap: 10, minWidth: 0}}>
+        <div style={{fontSize: isTop3 ? 22 : 14, fontWeight: 700, color: isTop3 ? T.accent : T.textDim, width: 32, flexShrink: 0, lineHeight: 1.1}}>{medal}</div>
+        <div style={{flex: 1, minWidth: 0}}>
+          <div title={nome} style={{fontSize: 14, fontWeight: 700, color: T.text, lineHeight: 1.3, ...wrap}}>{nome}</div>
+          <div style={{fontSize: 11, color: T.textDim, marginTop: 2}}>{count} {count === 1 ? "indicação" : "indicações"}</div>
+        </div>
+      </div>
+      <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "10px 0", borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}`, minWidth: 0}}>
+        <div style={{minWidth: 0}}>
+          <div style={{fontSize: 10, color: T.textDim, textTransform: "uppercase", letterSpacing: ".06em"}}>Faturamento</div>
+          <div style={{fontSize: 13, fontWeight: 700, color: T.green, ...wrap}}>{money(total)}</div>
+        </div>
+        <div style={{minWidth: 0}}>
+          <div style={{fontSize: 10, color: T.textDim, textTransform: "uppercase", letterSpacing: ".06em"}}>Reconhecidos</div>
+          <div style={{fontSize: 13, fontWeight: 700, color: completion === 100 ? T.green : completion > 0 ? T.yellow : T.textMuted}}>{ok || 0}/{count} ({completion}%)</div>
+        </div>
+      </div>
+      <button onClick={() => setExpanded(e => !e)} style={{
+        background: expanded ? T.accentGlow : "transparent",
+        border: `1px solid ${expanded ? T.accent + "55" : T.border}`,
+        borderRadius: 8, color: expanded ? T.accent : T.textMuted,
+        fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "8px 12px",
+        textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+      }}>
+        <span>{list.length === 0 ? "Sem pacientes registrados" : list.length === 1 ? "Ver 1 paciente indicado" : `Ver ${list.length} pacientes indicados`}</span>
+        <span style={{fontSize: 10, transform: expanded ? "rotate(180deg)" : "none", transition: "transform .15s"}}>▼</span>
+      </button>
+      {expanded && list.length > 0 && (
+        <ul style={{margin: 0, padding: "4px 0 4px 4px", listStyle: "none", display: "flex", flexDirection: "column", gap: 6, maxHeight: 240, overflowY: "auto"}}>
+          {list.map((p, i) => (
+            <li key={i} style={{fontSize: 12.5, color: T.text, display: "flex", alignItems: "flex-start", gap: 6, lineHeight: 1.35, ...wrap}}>
+              <span style={{color: T.accent, fontSize: 10, marginTop: 4, flexShrink: 0}}>▸</span>
+              <span style={{flex: 1, minWidth: 0, ...wrap}}>{p}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {onPickIndicador && (
+        <button onClick={() => onPickIndicador(nome)} style={{background: "transparent", border: `1px solid ${T.border}`, borderRadius: 8, color: T.textMuted, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: "6px 10px", alignSelf: "flex-start"}}>
+          🔎 Filtrar nesta indicação
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── CUSTOM TOOLTIP ────────────────────────────────────────
 function ChartTooltip({ active, payload, label, fmt: formatter }) {
   if (!active || !payload?.length) return null;
@@ -860,45 +922,52 @@ export default function App() {
 
         {/* ═══ RANKING ═══ */}
         {activeTab==="ranking" && (
-          <div className="ani" style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16}}>
-            <div style={card}>
-              <div style={{fontSize:12,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em",color:T.textDim,marginBottom:12}}>🏆 Ranking de Indicadores</div>
-              <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0,fontSize:13}}>
-                  <thead><tr>
-                    <th style={th}>#</th><th style={th}>Indicador</th>
-                    <th style={th}>Qtd</th><th style={th}>Pacientes indicados</th>
-                    <th style={th}>Faturamento</th><th style={th}>Ticket</th>
-                  </tr></thead>
-                  <tbody>
-                    {ranking.map((r,i)=>(
-                      <tr key={i} style={{background:i===0?T.accentGlow:"transparent"}}>
-                        <td style={{...td,fontWeight:700,color:i<3?T.accent:T.textDim}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
-                        <td style={{...td,color:T.text,fontWeight:600}}>{r.nome}</td>
-                        <td style={{...td,fontWeight:700}}>{r.count}</td>
-                        <td style={{...td,whiteSpace:"normal",maxWidth:280,fontSize:12,lineHeight:1.4}} title={(r.pacientes||[]).join(", ")}>{(r.pacientes||[]).join(", ") || "—"}</td>
-                        <td style={{...td,fontWeight:700,color:T.green}}>{money(r.total)}</td>
-                        <td style={td}>{money(r.avg)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="ani">
+            <div style={{display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 14, marginBottom: 20}}>
+              {[
+                {icon:"👥", label:"Indicadores únicos", value: ranking.length, color: T.accent},
+                {icon:"🤝", label:"Total de indicações", value: ranking.reduce((s,r)=>s+r.count,0), color: T.cyan},
+                {icon:"💰", label:"Faturamento gerado", value: money(ranking.reduce((s,r)=>s+r.total,0)), color: T.green},
+              ].map((k,i)=>(
+                <div key={i} style={{...card, borderLeft:`3px solid ${k.color}`}}>
+                  <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start"}}>
+                    <div>
+                      <div style={{fontSize:12, color:T.textMuted}}>{k.label}</div>
+                      <div style={{fontSize:24, fontWeight:800, color:k.color, lineHeight:1.1, marginTop:2}}>{k.value}</div>
+                    </div>
+                    <div style={{fontSize:22, width:40, height:40, borderRadius:10, background:`${k.color}15`, display:"flex", alignItems:"center", justifyContent:"center"}}>{k.icon}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {ranking.length === 0 ? (
+              <div style={{...card, textAlign:"center", padding:40, color:T.textDim}}>Nenhum indicador registrado ainda</div>
+            ) : (
+              <div style={{display:"grid", gridTemplateColumns: isMobile ? "1fr" : isTablet ? "repeat(2, 1fr)" : "repeat(3, 1fr)", gap: 14, marginBottom: 24}}>
+                {ranking.map((r, i) => (
+                  <IndicadorCard key={r.nome} rank={i+1} nome={r.nome} count={r.count} total={r.total} ok={r.ok||0} pacientes={r.pacientes}
+                    onPickIndicador={(nome)=>{ setFilterIndicador(nome); setActiveTab("operacional"); }} />
+                ))}
               </div>
-            </div>
-            <div style={card}>
-              <div style={{fontSize:12,fontWeight:600,textTransform:"uppercase",letterSpacing:".06em",color:T.textDim,marginBottom:12}}>📊 Faturamento por Indicador</div>
-              <ResponsiveContainer width="100%" height={Math.max(250,ranking.length*40)}>
-                <BarChart data={ranking.slice(0,10)} layout="vertical" margin={{left:10}}>
-                  <CartesianGrid stroke={T.border} strokeDasharray="3 3" horizontal={false}/>
-                  <XAxis type="number" tick={{fill:T.textDim,fontSize:10}} tickFormatter={v=>`${(v/1e3).toFixed(0)}k`} axisLine={false}/>
-                  <YAxis type="category" dataKey="nome" width={130} tick={{fill:T.textMuted,fontSize:11}} axisLine={false} tickLine={false}/>
-                  <Tooltip content={<ChartTooltip fmt={money}/>}/>
-                  <Bar dataKey="total" name="Faturamento" radius={[0,6,6,0]} maxBarSize={28}>
-                    {ranking.slice(0,10).map((_,i)=><Cell key={i} fill={i===0?T.accent:i===1?T.purple:i===2?T.cyan:T.borderLight}/>)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            )}
+
+            {ranking.length > 0 && (
+              <div style={card}>
+                <div style={{fontSize:12, fontWeight:600, textTransform:"uppercase", letterSpacing:".06em", color:T.textDim, marginBottom:12}}>📊 Top 10 — Indicações por Indicador</div>
+                <ResponsiveContainer width="100%" height={Math.max(280, Math.min(ranking.length, 10) * 44)}>
+                  <BarChart data={ranking.slice(0,10)} layout="vertical" margin={{left:10, right:30}}>
+                    <CartesianGrid stroke={T.border} strokeDasharray="3 3" horizontal={false}/>
+                    <XAxis type="number" tick={{fill:T.textDim,fontSize:10}} axisLine={false} allowDecimals={false}/>
+                    <YAxis type="category" dataKey="nome" width={isMobile?140:220} tick={{fill:T.textMuted,fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>v && v.length>28 ? v.slice(0,28)+"…" : v}/>
+                    <Tooltip content={<ChartTooltip/>}/>
+                    <Bar dataKey="count" name="Indicações" radius={[0,6,6,0]} maxBarSize={28}>
+                      {ranking.slice(0,10).map((_,i)=><Cell key={i} fill={i===0?T.accent:i===1?T.purple:i===2?T.cyan:T.borderLight}/>)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         )}
       </div>
