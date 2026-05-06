@@ -23,18 +23,27 @@ const SHEET_NAME = "Indicações";
 const API_TOKEN = ""; // Opcional: defina um token para proteger a API
 
 // Ordem das colunas na planilha (A=0, B=1, ...)
+// IMPORTANTE: este mapa precisa refletir EXATAMENTE a ordem dos cabeçalhos
+// na planilha. Linha 1 da aba "Indicações" deve ser:
+// A Colaborador_Indicação | B Paciente_Fechou | C Telefone_Paciente |
+// D Valor_Contrato | E Data_Fechamento | F Presente |
+// G Paciente_Indicador | H Telefone_Indicador | I Endereço |
+// J Data_Ligação_Confirmação | K Data_Envio_Presente |
+// L Data_Confirmação_Recebimento | M Código_Rastreio_Correios
 const COLUMNS = {
   colaborador_indicacao: 0,
   paciente_fechou: 1,
   telefone_paciente: 2,
   valor_contrato: 3,
   data_fechamento: 4,
-  paciente_indicador: 5,
-  telefone_indicador: 6,
-  endereco: 7,
-  data_ligacao_confirmacao: 8,
-  data_envio_presente: 9,
-  data_confirmacao_recebimento: 10,
+  presente: 5,
+  paciente_indicador: 6,
+  telefone_indicador: 7,
+  endereco: 8,
+  data_ligacao_confirmacao: 9,
+  data_envio_presente: 10,
+  data_confirmacao_recebimento: 11,
+  codigo_rastreio_correios: 12,
 };
 
 const COL_KEYS = Object.keys(COLUMNS);

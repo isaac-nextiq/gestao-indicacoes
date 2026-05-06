@@ -96,7 +96,24 @@ const getStatus = r => {
 };
 const money = v => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
 const fmtDate = d => { if(!d) return "—"; const p=d.split("-"); return `${p[2]}/${p[1]}/${p[0]}`; };
-const daysBetween = (a,b) => { if(!a||!b) return null; return Math.round((new Date(b)-new Date(a))/864e5); };
+const parseDate = v => {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  const s = String(v).trim();
+  if (!s) return null;
+  let d;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) d = new Date(s);
+  else if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const p = s.split("/"); d = new Date(+p[2], +p[1]-1, +p[0]);
+  } else d = new Date(s);
+  return isNaN(d) ? null : d;
+};
+const daysBetween = (a,b) => {
+  const dA = parseDate(a), dB = parseDate(b);
+  if (!dA || !dB) return null;
+  const diff = Math.round((dB - dA) / 864e5);
+  return isNaN(diff) ? null : diff;
+};
 const monthLabel = d => new Date(d+"T00:00:00").toLocaleDateString("pt-BR",{month:"short",year:"2-digit"});
 const today = () => new Date().toISOString().split("T")[0];
 
@@ -141,10 +158,10 @@ function Toast({ message, type, onClose }) {
 
 // ─── FORM MODAL ────────────────────────────────────────────
 const EMPTY_FORM = {
-  paciente_fechou:"", telefone_paciente:"", valor_contrato:"",
-  data_fechamento: today(), paciente_indicador:"", telefone_indicador:"",
+  colaborador_indicacao:"", paciente_fechou:"", telefone_paciente:"", valor_contrato:"",
+  data_fechamento: today(), presente:"", paciente_indicador:"", telefone_indicador:"",
   endereco:"", data_ligacao_confirmacao:"", data_envio_presente:"",
-  data_confirmacao_recebimento:"",
+  data_confirmacao_recebimento:"", codigo_rastreio_correios:"",
 };
 
 function FormModal({ initialData, onSave, onClose, saving, indicadores }) {
@@ -545,8 +562,15 @@ export default function App() {
 
   const ranking = useMemo(()=>{
     const m={};
-    filtered.forEach(r=>{const k=r.paciente_indicador; if(!m[k])m[k]={nome:k,count:0,total:0}; m[k].count++; m[k].total+=r.valor_contrato;});
-    return Object.values(m).map(r=>({...r,avg:r.count?r.total/r.count:0})).sort((a,b)=>b.total-a.total);
+    filtered.forEach(r=>{
+      const k=r.paciente_indicador;
+      if(!k) return;
+      if(!m[k])m[k]={nome:k,count:0,total:0,pacientes:[]};
+      m[k].count++;
+      m[k].total+=r.valor_contrato;
+      if(r.paciente_fechou) m[k].pacientes.push(r.paciente_fechou);
+    });
+    return Object.values(m).map(r=>({...r,avg:r.count?r.total/r.count:0})).sort((a,b)=>b.count-a.count);
   },[filtered]);
 
   const bottleneck = useMemo(()=>{
@@ -843,7 +867,8 @@ export default function App() {
                 <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0,fontSize:13}}>
                   <thead><tr>
                     <th style={th}>#</th><th style={th}>Indicador</th>
-                    <th style={th}>Qtd</th><th style={th}>Faturamento</th><th style={th}>Ticket</th>
+                    <th style={th}>Qtd</th><th style={th}>Pacientes indicados</th>
+                    <th style={th}>Faturamento</th><th style={th}>Ticket</th>
                   </tr></thead>
                   <tbody>
                     {ranking.map((r,i)=>(
@@ -851,6 +876,7 @@ export default function App() {
                         <td style={{...td,fontWeight:700,color:i<3?T.accent:T.textDim}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
                         <td style={{...td,color:T.text,fontWeight:600}}>{r.nome}</td>
                         <td style={{...td,fontWeight:700}}>{r.count}</td>
+                        <td style={{...td,whiteSpace:"normal",maxWidth:280,fontSize:12,lineHeight:1.4}} title={(r.pacientes||[]).join(", ")}>{(r.pacientes||[]).join(", ") || "—"}</td>
                         <td style={{...td,fontWeight:700,color:T.green}}>{money(r.total)}</td>
                         <td style={td}>{money(r.avg)}</td>
                       </tr>

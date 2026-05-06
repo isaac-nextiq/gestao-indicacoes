@@ -161,9 +161,25 @@ const fmtDate = d => {
   const p = d.split("-");
   return p[2] + "/" + p[1] + "/" + p[0];
 };
+const parseDate = v => {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  const s = String(v).trim();
+  if (!s) return null;
+  // Aceita ISO yyyy-MM-dd, ISO completo, ou dd/MM/yyyy
+  let d;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) d = new Date(s);
+  else if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const p = s.split("/");
+    d = new Date(+p[2], +p[1] - 1, +p[0]);
+  } else d = new Date(s);
+  return isNaN(d) ? null : d;
+};
 const daysBetween = (a, b) => {
-  if (!a || !b) return null;
-  return Math.round((new Date(b) - new Date(a)) / 864e5);
+  const dA = parseDate(a), dB = parseDate(b);
+  if (!dA || !dB) return null;
+  const diff = Math.round((dB - dA) / 864e5);
+  return isNaN(diff) ? null : diff;
 };
 const monthLabel = d => new Date(d + "T00:00:00").toLocaleDateString("pt-BR", {
   month: "short",
@@ -266,12 +282,14 @@ const EMPTY = {
   telefone_paciente: "",
   valor_contrato: "",
   data_fechamento: todayStr(),
+  presente: "",
   paciente_indicador: "",
   telefone_indicador: "",
   endereco: "",
   data_ligacao_confirmacao: "",
   data_envio_presente: "",
-  data_confirmacao_recebimento: ""
+  data_confirmacao_recebimento: "",
+  codigo_rastreio_correios: ""
 };
 function FormModal({
   initialData,
@@ -524,7 +542,36 @@ function FormModal({
     value: form.endereco,
     onChange: e => set("endereco", e.target.value),
     placeholder: "Endere\xE7o completo do indicador"
-  })), isEdit && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12,
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: ls
+  }, "🎁 Presente"), /*#__PURE__*/React.createElement("input", {
+    style: fs,
+    value: form.presente,
+    onChange: e => set("presente", e.target.value),
+    placeholder: "Ex: Mixer, Liquidificador, Jogo de Ta\xE7as..."
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: ls
+  }, "📮 C\xF3digo de Rastreio (Correios)"), /*#__PURE__*/React.createElement("input", {
+    style: fs,
+    value: form.codigo_rastreio_correios,
+    onChange: e => set("codigo_rastreio_correios", e.target.value),
+    placeholder: "Ex: OY747939639BR"
+  }))), isEdit && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -1149,15 +1196,18 @@ function App() {
     const m = {};
     filtered.forEach(r => {
       const k = r.paciente_indicador;
+      if (!k) return;
       if (!m[k]) m[k] = {
         nome: k,
         count: 0,
         total: 0,
-        ok: 0
+        ok: 0,
+        pacientes: []
       };
       m[k].count++;
       m[k].total += r.valor_contrato;
       if (r.status === "concluido") m[k].ok++;
+      if (r.paciente_fechou) m[k].pacientes.push(r.paciente_fechou);
     });
     return Object.values(m).map(r => ({
       ...r,
@@ -2061,6 +2111,8 @@ function App() {
     style: thS
   }, "Indica\xE7\xF5es"), /*#__PURE__*/React.createElement("th", {
     style: thS
+  }, "Pacientes indicados"), /*#__PURE__*/React.createElement("th", {
+    style: thS
   }, "Faturamento gerado"), /*#__PURE__*/React.createElement("th", {
     style: thS
   }, "Reconhecidos"))), /*#__PURE__*/React.createElement("tbody", null, ranking.map((r, i) => /*#__PURE__*/React.createElement("tr", {
@@ -2086,6 +2138,16 @@ function App() {
       fontWeight: 700
     }
   }, r.count), /*#__PURE__*/React.createElement("td", {
+    style: {
+      ...tdS,
+      whiteSpace: "normal",
+      maxWidth: 280,
+      color: T.textMuted,
+      fontSize: 12,
+      lineHeight: 1.4
+    },
+    title: (r.pacientes || []).join(", ")
+  }, (r.pacientes || []).join(", ") || "—"), /*#__PURE__*/React.createElement("td", {
     style: {
       ...tdS,
       fontWeight: 700,
